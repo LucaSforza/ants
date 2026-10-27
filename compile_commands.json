@@ -1,0 +1,17 @@
+[
+  {
+    "arguments": [
+      "/usr/lib64/ccache/gcc",
+      "-c",
+      "-Wall",
+      "-Wextra",
+      "-I./raylib-6.0/build/raylib/include/",
+      "-o",
+      "build/ant",
+      "main.c"
+    ],
+    "directory": "/home/softdream/Programming/gits/ant",
+    "file": "/home/softdream/Programming/gits/ant/main.c",
+    "output": "/home/softdream/Programming/gits/ant/build/ant"
+  }
+]
