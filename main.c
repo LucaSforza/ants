@@ -1,4 +1,4 @@
-
+// https://en.wikipedia.org/wiki/Langton%27s_ant
 #include <errno.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -13,8 +13,6 @@
 #define ROWS 150
 #define COLS 150
 #define CELL_SIZE 6
-
-/* ========================= GRID OPERATIONS ===========================*/
 
 bool grid[ROWS * COLS] = {0};
 
@@ -31,13 +29,6 @@ struct {
              .v_x = 0,
              .v_y = 1,
          }};
-
-void ant_print_state(void) {
-  printf("x = %d\n", ant.x);
-  printf("y = %d\n", ant.y);
-  printf("v_x = %d\n", ant.velocity.v_x);
-  printf("v_y = %d\n", ant.velocity.v_y);
-}
 
 int cell_to_index(int x, int y) {
   x = ((x % COLS) + COLS) % COLS;
@@ -79,6 +70,8 @@ void update_state(void) {
 
   bool current_value = getvalue(ant.x, ant.y);
 
+  // Cambiamo il valore della cella dove si trova la formica
+
   setvalue(ant.x, ant.y, !current_value);
 
   // Possiamo pensare alla velocita` come un numero
@@ -112,7 +105,7 @@ void update_state(void) {
     ant.velocity.v_y = -old_v_x;
   }
 
-  // Poi mi muovo
+  // Dopo aver cambiato la direzione, possiamo andare avanti
   ant.x += ant.velocity.v_x;
   ant.y += ant.velocity.v_y;
 }
