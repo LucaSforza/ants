@@ -1,4 +1,3 @@
-// https://en.wikipedia.org/wiki/Langton%27s_ant
 #include <errno.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -111,7 +110,7 @@ void update_state(void) {
 }
 
 int main(int argc, char **argv) {
-  int steps_per_frame = 1;
+  int steps_per_frame = 100;
   size_t T = 12000;
   int opt;
 
