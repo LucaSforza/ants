@@ -10,9 +10,9 @@
 
 #include <raylib.h>
 
-#define ROWS 100
-#define COLS 100
-#define CELL_SIZE 10
+#define ROWS 150
+#define COLS 150
+#define CELL_SIZE 6
 
 /* ========================= GRID OPERATIONS ===========================*/
 
@@ -49,23 +49,6 @@ int cell_to_index(int x, int y) {
 bool is_ant(int x, int y) { return ant.x == x && ant.y == y; }
 bool getvalue(int x, int y) { return grid[cell_to_index(x, y)]; }
 void setvalue(int x, int y, bool value) { grid[cell_to_index(x, y)] = value; }
-
-void printgrid(int t) {
-  printf("t = %d\n", t);
-  for (int y = 0; y < ROWS; y++) {
-    for (int x = 0; x < COLS; x++) {
-      if (is_ant(x, y)) {
-        putchar('A');
-      } else if (getvalue(x, y)) {
-        putchar('#');
-      } else {
-        putchar('.');
-      }
-      putchar(' ');
-    }
-    putchar('\n');
-  }
-}
 
 void raylib_drawgrid(size_t t) {
   ClearBackground(BLACK);
@@ -135,33 +118,36 @@ void update_state(void) {
 }
 
 int main(int argc, char **argv) {
-  bool terminal_mode = false;
   int steps_per_frame = 1;
+  size_t T = 12000;
   int opt;
 
-  while ((opt = getopt(argc, argv, "ts:")) != -1) {
+  while ((opt = getopt(argc, argv, "t:s:")) != -1) {
     switch (opt) {
     case 't':
-      terminal_mode = true;
-      break;
-
     case 's': {
       char *end;
       errno = 0;
+
       long value = strtol(optarg, &end, 10);
 
-      if (errno != 0 || *end != '\0' || end == optarg || value <= 0 ||
+      if (errno != 0 || end == optarg || *end != '\0' || value <= 0 ||
           value > INT_MAX) {
-        fprintf(stderr, "Invalid steps per frame: %s\n", optarg);
+        fprintf(stderr, "Invalid value for -%c: %s\n", opt, optarg);
         return EXIT_FAILURE;
       }
 
-      steps_per_frame = (int)value;
+      if (opt == 't') {
+        T = (size_t)value;
+      } else {
+        steps_per_frame = (int)value;
+      }
       break;
     }
 
     default:
-      fprintf(stderr, "Usage: %s [-t] [-s steps]\n", argv[0]);
+      fprintf(stderr, "Usage: %s [-t total_steps] [-s steps_per_frame]\n",
+              argv[0]);
       return EXIT_FAILURE;
     }
   }
@@ -171,25 +157,19 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  InitWindow(COLS * CELL_SIZE, ROWS * CELL_SIZE, "Ants");
+  InitWindow(COLS * CELL_SIZE, ROWS * CELL_SIZE, "Langton's Ant");
   SetTargetFPS(60);
 
   size_t t = 0;
 
   while (!WindowShouldClose()) {
-    for (int i = 0; i < steps_per_frame && t < 12000; i++) {
+    for (int i = 0; i < steps_per_frame && t < T; i++) {
       update_state();
       t++;
     }
 
     BeginDrawing();
-
-    if (terminal_mode) {
-      printgrid(t);
-    } else {
-      raylib_drawgrid(t);
-    }
-
+    raylib_drawgrid(t);
     EndDrawing();
   }
 
