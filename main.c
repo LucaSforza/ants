@@ -1,4 +1,6 @@
 
+#include <errno.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -38,19 +40,9 @@ void ant_print_state(void) {
 }
 
 int cell_to_index(int x, int y) {
-  if (x < 0) {
-    x = (-x) % COLS;
-    x = COLS - x;
-  }
-  if (y < 0) {
-    y = (-y) % ROWS;
-    y = ROWS - y;
-  }
-  if (x >= COLS)
-    x = x % COLS;
+  x = ((x % COLS) + COLS) % COLS;
+  y = ((y % ROWS) + ROWS) % ROWS;
 
-  if (y >= ROWS)
-    y = y % ROWS;
   return x + COLS * y;
 }
 
@@ -58,7 +50,8 @@ bool is_ant(int x, int y) { return ant.x == x && ant.y == y; }
 bool getvalue(int x, int y) { return grid[cell_to_index(x, y)]; }
 void setvalue(int x, int y, bool value) { grid[cell_to_index(x, y)] = value; }
 
-void printgrid(void) {
+void printgrid(int t) {
+  printf("t = %d\n", t);
   for (int y = 0; y < ROWS; y++) {
     for (int x = 0; x < COLS; x++) {
       if (is_ant(x, y)) {
@@ -74,49 +67,33 @@ void printgrid(void) {
   }
 }
 
-void raylib_drawgrid(void) {
+void raylib_drawgrid(size_t t) {
   ClearBackground(BLACK);
+
+  int offset_x = (GetScreenWidth() - COLS * CELL_SIZE) / 2;
+  int offset_y = (GetScreenHeight() - ROWS * CELL_SIZE) / 2;
+
   for (int y = 0; y < ROWS; y++) {
     for (int x = 0; x < COLS; x++) {
       if (getvalue(x, y)) {
-        DrawRectangle(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE,
-                      WHITE);
+        DrawRectangle(offset_x + x * CELL_SIZE, offset_y + y * CELL_SIZE,
+                      CELL_SIZE, CELL_SIZE, WHITE);
       }
     }
   }
-}
 
-void load_grid(const char *filename) {
-  FILE *f = fopen(filename, "r");
-  if (!f) {
-    fprintf(stderr, "[ERROR] cannot open '%s'\n", filename);
-    exit(1);
-  }
-  int x, y;
-  while (fscanf(f, " (%d ,%d )", &x, &y) == 2) {
-    setvalue(x, y, true);
-  }
-  fclose(f);
-}
+  // Formica rossa
+  DrawCircle(
+      offset_x + ((ant.x % COLS + COLS) % COLS) * CELL_SIZE + CELL_SIZE / 2,
+      offset_y + ((ant.y % ROWS + ROWS) % ROWS) * CELL_SIZE + CELL_SIZE / 2,
+      CELL_SIZE * 0.4f, RED);
 
-void save_grid(const char *filename) {
-  FILE *f = fopen(filename, "w");
-  if (!f) {
-    fprintf(stderr, "[ERROR] cannot write '%s'\n", filename);
-    exit(1);
-  }
-  for (int i = 0; i < ROWS * COLS; i++) {
-    if (grid[i])
-      fprintf(f, "(%d,%d) ", i % COLS, i / COLS);
-  }
-  fclose(f);
+  // Contatore degli step
+  DrawText(TextFormat("Step: %zu", t), 10, 10, 24, GREEN);
 }
 
 void update_state(void) {
 
-  // Per prima cosa cambio colore alla cella corrente
-  ant_print_state();
-  putchar('\n');
   bool current_value = getvalue(ant.x, ant.y);
 
   setvalue(ant.x, ant.y, !current_value);
@@ -158,22 +135,64 @@ void update_state(void) {
 }
 
 int main(int argc, char **argv) {
-  (void)argc;
-  (void)argv;
+  bool terminal_mode = false;
+  int steps_per_frame = 1;
+  int opt;
+
+  while ((opt = getopt(argc, argv, "ts:")) != -1) {
+    switch (opt) {
+    case 't':
+      terminal_mode = true;
+      break;
+
+    case 's': {
+      char *end;
+      errno = 0;
+      long value = strtol(optarg, &end, 10);
+
+      if (errno != 0 || *end != '\0' || end == optarg || value <= 0 ||
+          value > INT_MAX) {
+        fprintf(stderr, "Invalid steps per frame: %s\n", optarg);
+        return EXIT_FAILURE;
+      }
+
+      steps_per_frame = (int)value;
+      break;
+    }
+
+    default:
+      fprintf(stderr, "Usage: %s [-t] [-s steps]\n", argv[0]);
+      return EXIT_FAILURE;
+    }
+  }
+
+  if (optind < argc) {
+    fprintf(stderr, "Unexpected argument: %s\n", argv[optind]);
+    return EXIT_FAILURE;
+  }
 
   InitWindow(COLS * CELL_SIZE, ROWS * CELL_SIZE, "Ants");
   SetTargetFPS(60);
 
-  for (size_t t = 0; !WindowShouldClose(); t++) {
-    printf("t = %lu\n", t);
+  size_t t = 0;
+
+  while (!WindowShouldClose()) {
+    for (int i = 0; i < steps_per_frame && t < 12000; i++) {
+      update_state();
+      t++;
+    }
+
     BeginDrawing();
-    raylib_drawgrid();
+
+    if (terminal_mode) {
+      printgrid(t);
+    } else {
+      raylib_drawgrid(t);
+    }
+
     EndDrawing();
-    update_state();
-    WaitTime(.25);
   }
 
   CloseWindow();
-
-  return 0;
+  return EXIT_SUCCESS;
 }
