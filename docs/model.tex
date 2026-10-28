@@ -1,0 +1,223 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[italian]{babel}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{hyperref}
+\newcommand{\T}{\mathbb{T}}
+\newcommand{\R}{\mathbb{R}}
+\newtheorem{proposition}{Proposizione}
+\title{Una formica di Langton continua:\\modello agente--campo e sistema ODE semi-discreto}
+\author{Progetto Ants}
+\date{}
+\begin{document}
+\maketitle
+
+\section{Scopo e dominio}
+L'analogia con il passaggio Game of Life--Lenia motiva una generalizzazione,
+non un limite rigoroso della formica discreta. Un agente si muove, legge un
+ambiente e lo modifica continuamente. Non vi sono flip o svolte istantanee.
+Il dominio implementato è il toro quadrato
+$\T_L^2=(\R/L\mathbb Z)^2$, con posizione $X(t)=(x(t),y(t))$ e orientamento
+$\theta(t)\in\R/(2\pi\mathbb Z)$. In raylib $y$ cresce verso il basso:
+angoli crescenti appaiono orari. Lunghezze e tempi hanno unità arbitrarie.
+
+\section{Sistema continuo}
+Il campo di fase sollevato $\phi:\T_L^2\times[0,\infty)\to\R$ e
+l'osservabile colore sono definiti da
+\begin{align}
+ \dot x &= v\cos\theta,& \dot y&=v\sin\theta,\\
+ \dot\theta &= \omega\,[2c(X(t),t)-1],\label{eq:turn}\\
+ \partial_t\phi(z,t)&=\kappa K_\sigma(z-X(t)),\label{eq:phase}\\
+ c(z,t)&=\tfrac12(1-\cos\phi(z,t)).\label{eq:color}
+\end{align}
+I parametri $v,\omega,\kappa$ sono non negativi, $L,\sigma>0$.
+Condizioni iniziali di default: $X_0=(L/2,L/2)$, $\theta_0=\pi/2$,
+$\phi_0\equiv0$. L'equazione del campo non contiene derivate spaziali:
+è una famiglia continua di ODE forzate dalla stessa traiettoria, con memoria
+\begin{equation}
+ \phi(z,t)=\phi_0(z)+\kappa\int_0^t K_\sigma(z-X(s))\,ds.
+\end{equation}
+Non sono presenti diffusione, decadimento, rumore o auto-organizzazione
+del campo in assenza dell'agente.
+
+\subsection{Kernel periodico regolarizzato}
+Per ogni coordinata si prende lo spostamento minimo
+$d_L(a)\in[-L/2,L/2)$ congruente ad $a$ modulo $L$.
+Posti $d=(d_L(z_x-X_x),d_L(z_y-X_y))$ e $q=|d|^2/\sigma^2$,
+\begin{equation}
+ K_\sigma(d)=e^{-q/2}\tau(q),\qquad
+ \tau(q)=\begin{cases}
+ 1,&q\le9,\\
+ (1-s)^3(1+3s+6s^2),\quad s=(q-9)/7,&9<q<16,\\
+ 0,&q\ge16.
+ \end{cases}
+\end{equation}
+Il raccordo ha derivate prima e seconda nulle ai due estremi; dunque il
+kernel è $C^2$, uguale alla gaussiana entro $3\sigma$, nullo oltre $4\sigma$.
+Si impone $4\sigma\le L/2$, rendendo innocua la cucitura dello spostamento
+minimo: il kernel e le prime due derivate si annullano lì.
+Il picco è uno, non l'integrale. Il kernel compatto è una scelta del modello,
+non una gaussiana infinita troncata in modo non documentato.
+
+\subsection{Inversione continua e informazione di fase}
+\begin{proposition}
+Il colore appartiene a $[0,1]$ e una dose di fase pari a $\pi$ lo inverte:
+$c(\phi+\pi)=1-c(\phi)$.
+\end{proposition}
+\begin{proof}
+Segue da $-1\le\cos\phi\le1$ e $\cos(\phi+\pi)=-\cos\phi$.
+\end{proof}
+Questa identità non implica una dose di $\pi$ a ogni visita. La dose locale
+dipende dall'intera traiettoria. Per un passaggio rettilineo isolato a velocità
+$v>0$ sul centro del kernel, trascurando il raccordo,
+\begin{equation}
+ \Delta\phi\simeq\frac{\kappa}{v}
+       \int_{-\infty}^{\infty}e^{-s^2/(2\sigma^2)}\,ds
+ =\frac{\kappa\sqrt{2\pi}\sigma}{v}.
+\end{equation}
+È una stima dimensionale, non una proprietà del moto accoppiato.
+In particolare l'agente legge anche il colore prodotto durante il passaggio.
+
+La legge alternativa $\dot c=a(t)(1-2c)$ con $a\ge0$ porta verso $1/2$
+e non alterna i colori. Nel modello di fase
+\begin{equation}
+ \partial_t c=\tfrac\kappa2\sin\phi\,K_\sigma(z-X),
+\end{equation}
+che non è una dinamica chiusa nel solo $c$: il segno di $\sin\phi$ è
+informazione aggiuntiva. Una formulazione equivalente usa $u=\cos\phi$,
+$w=\sin\phi$, con $\dot u=-a w$, $\dot w=a u$, $a=\kappa K_\sigma$,
+$u^2+w^2=1$. Integrare la fase evita il drift numerico di questo vincolo.
+
+\subsection{Proprietà e limiti delle affermazioni}
+\begin{proposition}
+Per $\phi_0\in C^1(\T_L^2)$ il modello regolarizzato ammette una soluzione
+globale unica. Inoltre $|\dot X|=v$, $|\dot\theta|\le\omega$ e
+$0\le\partial_t\phi\le\kappa$.
+\end{proposition}
+\begin{proof}[Argomento]
+Si usa lo spazio di stato $\T_L^2\times S^1\times C^1(\T_L^2)$,
+con carte locali o coordinate sollevate per l'agente. La valutazione
+$\phi\mapsto\phi(X)$ è localmente Lipschitz congiuntamente a $X$
+su insiemi limitati in $C^1$. La traslazione del kernel $C^2$ è
+Lipschitz in norma $C^1$. Il termine destro è quindi localmente Lipschitz.
+La formula integrale del campo dà
+$\|\phi(t)\|_{C^1}\le\|\phi_0\|_{C^1}
++\kappa t\|K_\sigma\|_{C^1}$; posizione e orientamento hanno derivate
+limitate. Non vi è esplosione in tempo finito e la soluzione locale si estende.
+Gli altri limiti seguono direttamente dalle equazioni e $0\le K_\sigma\le1$.
+\end{proof}
+La fase sollevata cresce monotonicamente; il colore no. Dove il supporto
+dell'agente non arriva, il campo rimane costante. Queste proprietà non
+dimostrano attrattori, caos, strutture stabili o autostrade.
+
+\section{Sistema ODE semi-discreto realmente integrato}
+Si pongono $h=L/N$, $z_{ij}=(ih,jh)$ con indici periodici, e
+$\Phi_{ij}(t)\simeq\phi(z_{ij},t)$. Sia $\mathcal B_h$ l'interpolante
+bilineare periodico dei valori nodali. Il sistema implementato è
+\begin{align}
+ \dot\Phi_{ij}&=\kappa K_\sigma(z_{ij}-X),\\
+ C_h(X;\Phi)&=\mathcal B_h\left[\tfrac12(1-\cos\Phi_{ij})\right](X),\\
+ \dot X&=v(\cos\theta,\sin\theta),\\
+ \dot\theta&=\omega(2C_h(X;\Phi)-1).
+\end{align}
+Ha $N^2+3$ gradi di libertà reali prima del quoziente periodico.
+Non compare un fattore $h^2$: si integrano valori di campo, non masse per
+cella. Entro una cella con coordinate frazionarie $a,b\in[0,1]$,
+\begin{equation}
+ \mathcal B_h[C](X)=\sum_{r,s\in\{0,1\}}
+ a^r(1-a)^{1-r}b^s(1-b)^{1-s}C_{i+r,j+s}.
+\end{equation}
+Essendo una combinazione convessa, $C_h\in[0,1]$.
+Il sistema semi-discreto non è esattamente il continuo: la non linearità
+del coseno e l'interpolazione non commutano. Si documenta esplicitamente
+l'ordine scelto, colore poi interpolazione. Il RHS è localmente Lipschitz,
+ma solo a tratti differenziabile rispetto alla posizione sulle linee di griglia.
+
+\subsection{Midpoint esplicito accoppiato}
+Siano $U^n=(X^n,\theta^n,\Phi^n)$ e $F$ il RHS del sistema precedente.
+Il metodo è $U^*=U^n+\frac{\Delta t}{2}F(U^n)$,
+$U^{n+1}=U^n+\Delta t F(U^*)$. In dettaglio,
+\begin{align}
+ X^*&=X^n+\tfrac{\Delta t}{2}v(\cos\theta^n,\sin\theta^n),\\
+ \theta^*&=\theta^n+\tfrac{\Delta t}{2}\omega(2C_h(X^n;\Phi^n)-1),\\
+ \Phi^*_{ij}&=\Phi^n_{ij}+\tfrac{\Delta t}{2}\kappa K_\sigma(z_{ij}-X^n),\\
+ X^{n+1}&=X^n+\Delta t v(\cos\theta^*,\sin\theta^*),\\
+ \theta^{n+1}&=\theta^n+\Delta t\omega(2C_h(X^*;\Phi^*)-1),\\
+ \Phi^{n+1}_{ij}&=\Phi^n_{ij}+\Delta t\kappa K_\sigma(z_{ij}-X^*).
+\end{align}
+Si riducono le coordinate modulo $L$ e le fasi/angoli modulo $2\pi$.
+Quest'ultima riduzione preserva tutti i colori e gli incrementi futuri
+in aritmetica esatta. Non si interpolano fasi ridotte: tra zero e
+$2\pi-\varepsilon$ produrrebbero un valore spurio vicino a $\pi$.
+Per lo stadio intermedio servono solo quattro valori di $\Phi^*$, calcolati
+su richiesta dal sensore. La scrittura finale visita solo il supporto locale.
+
+\subsection{Tempo simulato e grafica}
+Il passo $\Delta t$ è fisso. Un accumulatore riceve il tempo reale moltiplicato
+per il rate e consuma $\Delta t$ per ogni passo eseguito. Un budget di lavoro
+limita la durata del calcolo per frame senza buttare via passi o arretrato.
+Cambiare FPS o rate non cambia la mappa numerica $U^n\mapsto U^{n+1}$.
+Il tempo mostrato è $n\Delta t$, non la somma dei tempi dei frame.
+
+\section{Parametri, controlli e accuratezza}
+Default: $L=128$, $N=512$, $v=6$, $\omega=3$, $\kappa=7.52$,
+$\sigma=1$, $\Delta t=0.01$. Per $v>0$ i gruppi adimensionali rilevanti
+includono $\omega\sigma/v$, $\kappa\sigma/v$, $L/\sigma$,
+$h/\sigma$ e $v\Delta t/\sigma$.
+I controlli CLI impongono
+\begin{equation}
+ h\le\sigma/2,\quad v\Delta t\le\sigma/4,\quad
+ \omega\Delta t\le0.1,\quad\kappa\Delta t\le0.25.
+\end{equation}
+Non sono stime rigorose dell'errore o condizioni sufficienti per fedeltà
+su tempi arbitrariamente lunghi. Anche senza instabilità, un campo
+sotto-risolto altera la rotazione. Il metodo midpoint ha ordine classico due
+per RHS abbastanza regolare; non si applica senza riserve tale teorema
+alle cuciture del bilineare. L'errore di interpolazione del colore è
+$O(h^2)$ per un campo con derivate seconde limitate, ma la costante può
+crescere con il tempo perché non si introduce diffusione.
+
+\section{Validazione ed esperimenti: evidenza, non teoremi}
+Per $\kappa=0$ e campo nero, $\theta(t)=\theta_0-\omega t$;
+per $\omega>0$ la traiettoria è un cerchio di raggio $v/\omega$.
+Per $v=0$, agente su un nodo e campo inizialmente nero,
+$\phi(X,t)=\kappa t$, dunque per $\kappa>0$
+\begin{equation}
+ \theta(t)=\theta_0-\frac{\omega}{\kappa}\sin(\kappa t).
+\end{equation}
+Questi sono controlli analitici implementati nei test, insieme a
+interpolazione, fase modulo, kernel, reset e traslazioni periodiche di griglia.
+Dimezzare il passo nel controllo stazionario riduce l'errore di circa quattro.
+
+A $T=2$, $L=128,N=512$, differenze successive di stato per
+$\Delta t=0.01,0.005,0.0025$: $6.74018\,10^{-4}$ e $3.07878\,10^{-4}$.
+A $T=2,L=32,\Delta t=0.0025$, per $h=0.25,0.125,0.0625$:
+$0.236961$ e $0.0598846$. La metrica somma distanza periodica delle
+posizioni e differenza angolare; si verifica anche la diminuzione dell'RMS
+del campo. Non sono errori rispetto a una soluzione esatta sconosciuta.
+
+Quattro preset sono provati fino a $T=500$ a due timestep, senza NaN:
+\texttt{orbit} ($\kappa=0$), \texttt{balanced} (default),
+\texttt{broad} ($\sigma=2,\kappa=3.76,\omega=1.5$),
+\texttt{fast-turn} ($\omega=6$). I risultati completi e riproducibili sono
+in \texttt{experiments/results.json}. Le traiettorie attive mostrano
+molte inversioni e talvolta forti differenze al cambiare di passo: ciò
+non dimostra caos, periodicità, attrattori o un analogo dell'autostrada.
+La periodicità dell'agente da sola non implica quella dell'intero campo.
+Su un toro finito una deriva osservata nelle coordinate sollevate non
+equivale a un'autostrada infinita.
+
+\section{Corrispondenza con il codice}
+\begin{itemize}
+ \item \texttt{continuous\_kernel}: kernel e distanze periodiche.
+ \item \texttt{continuous\_color}, \texttt{sample\_stage}: osservabile e bilineare,
+       inclusa la fase intermedia accoppiata.
+ \item \texttt{continuous\_step}, \texttt{deposit}: midpoint e scrittura locale.
+ \item \texttt{continuous\_validate}: vincoli dei parametri.
+ \item \texttt{tests/test\_continuous.c}: controlli analitici e raffinamenti.
+\end{itemize}
+L'implementazione grafica, la traccia e il campionamento CSV sono esterni
+al nucleo ODE e non ne modificano lo stato.
+\end{document}
